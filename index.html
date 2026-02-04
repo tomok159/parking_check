@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>駐車場 自動判定</title>
+<title>駐車場 写真→自動判定</title>
 
 <style>
 body{
@@ -12,9 +12,10 @@ body{
 }
 
 #preview{
-  max-width:300px;
+  max-width:320px;
   margin:10px auto;
   display:block;
+  border:1px solid #ccc;
 }
 
 #grid{
@@ -56,7 +57,6 @@ canvas{ display:none; }
 <h2>駐車場 写真→自動判定</h2>
 
 <input type="file" id="imgInput" accept="image/*">
-
 <img id="preview">
 
 <div id="grid"></div>
@@ -65,6 +65,7 @@ canvas{ display:none; }
 <canvas id="cv"></canvas>
 
 <script>
+/* ===== マス作成 ===== */
 const grid = document.getElementById("grid");
 for(let i=0;i<10;i++){
   const d=document.createElement("div");
@@ -73,39 +74,44 @@ for(let i=0;i<10;i++){
   grid.appendChild(d);
 }
 
-document.getElementById("imgInput").onchange = e=>{
+/* ===== 画像選択で自動解析 ===== */
+document.getElementById("imgInput").addEventListener("change", e=>{
   const file = e.target.files[0];
   if(!file) return;
 
   const img = new Image();
   img.onload = ()=>{
     document.getElementById("preview").src = img.src;
-    analyze(img); // ← 自動実行
+    analyze(img);
   };
   img.src = URL.createObjectURL(file);
-};
+});
 
+/* ===== 判定ロジック ===== */
 function analyze(img){
+
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
 
-  cv.width = img.width;
-  cv.height = img.height;
-  ctx.drawImage(img,0,0);
+  // サイズを縮小して安定化
+  const scale = 0.5;
+  cv.width = img.width * scale;
+  cv.height = img.height * scale;
 
-  const w = img.width;
-  const h = img.height;
+  ctx.drawImage(img,0,0,cv.width,cv.height);
+
+  const w = cv.width;
+  const h = cv.height;
 
   const rows = 5;
 
-  // 君の手書き図に合わせた座標
-  const leftX  = w * 0.25;
-  const rightX = w * 0.65;
-  const colW   = w * 0.15;
+  // 座標（ここ調整ポイント）
+  const leftX  = w * 0.22;
+  const rightX = w * 0.60;
+  const colW   = w * 0.18;
   const cellH  = h / rows;
 
   const cells = document.querySelectorAll(".cell");
-
   let fullCount = 0;
 
   for(let r=0;r<rows;r++){
@@ -114,23 +120,24 @@ function analyze(img){
   }
 
   function check(cx, r, idx){
-    const data = ctx.getImageData(
-      cx,
-      r*cellH + cellH*0.3,
-      colW,
-      cellH*0.4
-    ).data;
+
+    const sx = Math.floor(cx);
+    const sy = Math.floor(r*cellH + cellH*0.25);
+    const sw = Math.floor(colW);
+    const sh = Math.floor(cellH*0.5);
+
+    const data = ctx.getImageData(sx,sy,sw,sh).data;
 
     let dark=0;
 
     for(let i=0;i<data.length;i+=4){
       const v = (data[i]+data[i+1]+data[i+2])/3;
-      if(v < 220) dark++;
+      if(v < 200) dark++;   // ← 反応しやすく調整
     }
 
     const ratio = dark / (data.length/4);
 
-    if(ratio > 0.15){ // 暗いピクセルが一定以上 → 車あり
+    if(ratio > 0.10){       // ← 判定ゆるめに
       cells[idx].classList.add("full");
       cells[idx].textContent="満";
       fullCount++;
@@ -139,7 +146,7 @@ function analyze(img){
       cells[idx].textContent="空";
     }
 
-    console.log("cell", idx, "darkRatio", ratio);
+    console.log("cell",idx,"ratio",ratio);
   }
 
   document.getElementById("result").textContent =
