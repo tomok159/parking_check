@@ -1,157 +1,45 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<title>駐車場 写真→自動判定</title>
-
-<style>
-body{
-  font-family:sans-serif;
-  text-align:center;
-  padding:20px;
-}
-
-#preview{
-  max-width:320px;
-  margin:10px auto;
-  display:block;
-  border:1px solid #ccc;
-}
-
-#grid{
-  display:grid;
-  grid-template-columns: repeat(5,60px);
-  gap:10px;
-  justify-content:center;
-  margin-top:20px;
-}
-
-.cell{
-  width:60px;
-  height:60px;
-  border:2px solid #333;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  background:#8f8;
-}
-
-.full{
-  background:#f66;
-  color:white;
-}
-
-#result{
-  margin-top:15px;
-  font-size:18px;
-  font-weight:bold;
-}
-
-canvas{ display:none; }
-</style>
-</head>
-
+<html>
 <body>
 
-<h2>駐車場 写真→自動判定</h2>
-
-<input type="file" id="imgInput" accept="image/*">
-<img id="preview">
-
-<div id="grid"></div>
-<div id="result"></div>
+<input type="file" id="f">
 
 <canvas id="cv"></canvas>
 
 <script>
-/* ===== マス作成 ===== */
-const grid = document.getElementById("grid");
-for(let i=0;i<10;i++){
-  const d=document.createElement("div");
-  d.className="cell";
-  d.textContent=i+1;
-  grid.appendChild(d);
-}
-
-/* ===== 画像選択で自動解析 ===== */
-document.getElementById("imgInput").addEventListener("change", e=>{
+document.getElementById("f").onchange = e=>{
   const file = e.target.files[0];
-  if(!file) return;
-
   const img = new Image();
+
   img.onload = ()=>{
-    document.getElementById("preview").src = img.src;
-    analyze(img);
-  };
-  img.src = URL.createObjectURL(file);
-});
+    const cv = document.getElementById("cv");
+    const ctx = cv.getContext("2d");
 
-/* ===== 判定ロジック ===== */
-function analyze(img){
+    cv.width = img.width;
+    cv.height = img.height;
+    ctx.drawImage(img,0,0);
 
-  const cv = document.getElementById("cv");
-  const ctx = cv.getContext("2d");
-
-  // サイズを縮小して安定化
-  const scale = 0.5;
-  cv.width = img.width * scale;
-  cv.height = img.height * scale;
-
-  ctx.drawImage(img,0,0,cv.width,cv.height);
-
-  const w = cv.width;
-  const h = cv.height;
-
-  const rows = 5;
-
-  // 座標（ここ調整ポイント）
-  const leftX  = w * 0.22;
-  const rightX = w * 0.60;
-  const colW   = w * 0.18;
-  const cellH  = h / rows;
-
-  const cells = document.querySelectorAll(".cell");
-  let fullCount = 0;
-
-  for(let r=0;r<rows;r++){
-    check(leftX, r, r);
-    check(rightX, r, r+5);
-  }
-
-  function check(cx, r, idx){
-
-    const sx = Math.floor(cx);
-    const sy = Math.floor(r*cellH + cellH*0.25);
-    const sw = Math.floor(colW);
-    const sh = Math.floor(cellH*0.5);
-
-    const data = ctx.getImageData(sx,sy,sw,sh).data;
+    // テスト用：中央を必ず読む
+    const data = ctx.getImageData(
+      img.width*0.4,
+      img.height*0.4,
+      img.width*0.2,
+      img.height*0.2
+    ).data;
 
     let dark=0;
-
     for(let i=0;i<data.length;i+=4){
-      const v = (data[i]+data[i+1]+data[i+2])/3;
-      if(v < 200) dark++;   // ← 反応しやすく調整
+      const v=(data[i]+data[i+1]+data[i+2])/3;
+      if(v<200) dark++;
     }
 
-    const ratio = dark / (data.length/4);
+    const ratio = dark/(data.length/4);
 
-    if(ratio > 0.10){       // ← 判定ゆるめに
-      cells[idx].classList.add("full");
-      cells[idx].textContent="満";
-      fullCount++;
-    }else{
-      cells[idx].classList.remove("full");
-      cells[idx].textContent="空";
-    }
+    alert("暗ピクセル率 = "+ratio);
+  };
 
-    console.log("cell",idx,"ratio",ratio);
-  }
-
-  document.getElementById("result").textContent =
-    `満車: ${fullCount} / 10`;
-}
+  img.src = URL.createObjectURL(file);
+};
 </script>
 
 </body>
