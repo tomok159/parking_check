@@ -2,44 +2,10 @@
 <html>
 <body>
 
-<input type="file" id="f">
-
-<canvas id="cv"></canvas>
+<h1>JSテスト</h1>
 
 <script>
-document.getElementById("f").onchange = e=>{
-  const file = e.target.files[0];
-  const img = new Image();
-
-  img.onload = ()=>{
-    const cv = document.getElementById("cv");
-    const ctx = cv.getContext("2d");
-
-    cv.width = img.width;
-    cv.height = img.height;
-    ctx.drawImage(img,0,0);
-
-    // テスト用：中央を必ず読む
-    const data = ctx.getImageData(
-      img.width*0.4,
-      img.height*0.4,
-      img.width*0.2,
-      img.height*0.2
-    ).data;
-
-    let dark=0;
-    for(let i=0;i<data.length;i+=4){
-      const v=(data[i]+data[i+1]+data[i+2])/3;
-      if(v<200) dark++;
-    }
-
-    const ratio = dark/(data.length/4);
-
-    alert("暗ピクセル率 = "+ratio);
-  };
-
-  img.src = URL.createObjectURL(file);
-};
+alert("JS動作OK");
 </script>
 
 </body>
