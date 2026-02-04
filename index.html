@@ -1,11 +1,118 @@
 <!DOCTYPE html>
 <html lang="ja">
+<head>
 <meta charset="UTF-8">
-<title>テスト表示</title>
+<title>駐車場チェック</title>
+<style>
+body{
+  font-family:sans-serif;
+  text-align:center;
+  padding:20px;
+}
+
+#grid{
+  display:grid;
+  grid-template-columns: repeat(5,60px);
+  gap:10px;
+  justify-content:center;
+  margin-top:20px;
+}
+
+.cell{
+  width:60px;
+  height:60px;
+  border:2px solid #333;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  background:#8f8;
+}
+
+.full{
+  background:#f66;
+}
+
+canvas{
+  display:none;
+}
+</style>
+</head>
 
 <body>
-<h1>表示テストOK</h1>
-<p>ここが見えてたらGitHub Pagesは正常。</p>
-</body>
 
+<h2>駐車場 自動判定（10台）</h2>
+
+<input type="file" id="imgInput" accept="image/*">
+
+<div id="grid"></div>
+
+<canvas id="cv"></canvas>
+
+<script>
+const grid = document.getElementById("grid");
+for(let i=0;i<10;i++){
+  const d=document.createElement("div");
+  d.className="cell";
+  d.textContent=i+1;
+  grid.appendChild(d);
+}
+
+imgInput.onchange = e=>{
+  const file = e.target.files[0];
+  const img = new Image();
+  img.onload = ()=>analyze(img);
+  img.src = URL.createObjectURL(file);
+};
+
+function analyze(img){
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+
+  cv.width = img.width;
+  cv.height = img.height;
+  ctx.drawImage(img,0,0);
+
+  const w = img.width;
+  const h = img.height;
+
+  const cols = 5;
+  const rows = 2;
+  const cw = w/cols;
+  const ch = h/rows;
+
+  const cells = document.querySelectorAll(".cell");
+
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+
+      const data = ctx.getImageData(
+        c*cw + cw*0.3,
+        r*ch + ch*0.3,
+        cw*0.4,
+        ch*0.4
+      ).data;
+
+      let sum=0;
+      for(let i=0;i<data.length;i+=4){
+        sum += data[i]+data[i+1]+data[i+2];
+      }
+
+      const avg = sum/(data.length/4)/3;
+
+      const idx = r*cols+c;
+
+      if(avg < 200){
+        cells[idx].classList.add("full");
+        cells[idx].textContent="満";
+      }else{
+        cells[idx].classList.remove("full");
+        cells[idx].textContent="空";
+      }
+    }
+  }
+}
+</script>
+
+</body>
 </html>
