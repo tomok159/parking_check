@@ -2,13 +2,19 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>駐車場チェック</title>
+<title>駐車場 自動判定</title>
 
 <style>
 body{
   font-family:sans-serif;
   text-align:center;
   padding:20px;
+}
+
+#preview{
+  max-width:300px;
+  margin:10px auto;
+  display:block;
 }
 
 #grid{
@@ -35,19 +41,26 @@ body{
   color:white;
 }
 
-canvas{
-  display:none;
+#result{
+  margin-top:15px;
+  font-size:18px;
+  font-weight:bold;
 }
+
+canvas{ display:none; }
 </style>
 </head>
 
 <body>
 
-<h2>駐車場 自動判定（写真アップ）</h2>
+<h2>駐車場 写真→自動判定</h2>
 
 <input type="file" id="imgInput" accept="image/*">
 
+<img id="preview">
+
 <div id="grid"></div>
+<div id="result"></div>
 
 <canvas id="cv"></canvas>
 
@@ -65,7 +78,10 @@ document.getElementById("imgInput").onchange = e=>{
   if(!file) return;
 
   const img = new Image();
-  img.onload = ()=>analyze(img);
+  img.onload = ()=>{
+    document.getElementById("preview").src = img.src;
+    analyze(img); // ← 自動実行
+  };
   img.src = URL.createObjectURL(file);
 };
 
@@ -80,45 +96,54 @@ function analyze(img){
   const w = img.width;
   const h = img.height;
 
-  // 君の図専用パラメータ
   const rows = 5;
-  const leftX = w * 0.28;
-  const rightX = w * 0.68;
-  const colW = w * 0.12;
-  const cellH = h / rows;
+
+  // 君の手書き図に合わせた座標
+  const leftX  = w * 0.25;
+  const rightX = w * 0.65;
+  const colW   = w * 0.15;
+  const cellH  = h / rows;
 
   const cells = document.querySelectorAll(".cell");
 
+  let fullCount = 0;
+
   for(let r=0;r<rows;r++){
-    checkCell(leftX, r, r);
-    checkCell(rightX, r, r+5);
+    check(leftX, r, r);
+    check(rightX, r, r+5);
   }
 
-  function checkCell(cx, r, idx){
+  function check(cx, r, idx){
     const data = ctx.getImageData(
       cx,
-      r*cellH + cellH*0.25,
+      r*cellH + cellH*0.3,
       colW,
-      cellH*0.5
+      cellH*0.4
     ).data;
 
-    let sum=0;
+    let dark=0;
+
     for(let i=0;i<data.length;i+=4){
-      sum += data[i] + data[i+1] + data[i+2];
+      const v = (data[i]+data[i+1]+data[i+2])/3;
+      if(v < 200) dark++;
     }
 
-    const avg = sum/(data.length/4)/3;
+    const ratio = dark / (data.length/4);
 
-    if(avg < 220){
+    if(ratio > 0.15){ // 暗いピクセルが一定以上 → 車あり
       cells[idx].classList.add("full");
-      cells[idx].textContent = "満";
+      cells[idx].textContent="満";
+      fullCount++;
     }else{
       cells[idx].classList.remove("full");
-      cells[idx].textContent = "空";
+      cells[idx].textContent="空";
     }
 
-    console.log("cell", idx, "brightness", avg);
+    console.log("cell", idx, "darkRatio", ratio);
   }
+
+  document.getElementById("result").textContent =
+    `満車: ${fullCount} / 10`;
 }
 </script>
 
