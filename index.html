@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>駐車場チェック</title>
+
 <style>
 body{
   font-family:sans-serif;
@@ -31,6 +32,7 @@ body{
 
 .full{
   background:#f66;
+  color:white;
 }
 
 canvas{
@@ -41,7 +43,7 @@ canvas{
 
 <body>
 
-<h2>駐車場 自動判定（10台）</h2>
+<h2>駐車場 自動判定（写真アップ）</h2>
 
 <input type="file" id="imgInput" accept="image/*">
 
@@ -58,8 +60,10 @@ for(let i=0;i<10;i++){
   grid.appendChild(d);
 }
 
-imgInput.onchange = e=>{
+document.getElementById("imgInput").onchange = e=>{
   const file = e.target.files[0];
+  if(!file) return;
+
   const img = new Image();
   img.onload = ()=>analyze(img);
   img.src = URL.createObjectURL(file);
@@ -76,40 +80,44 @@ function analyze(img){
   const w = img.width;
   const h = img.height;
 
-  const cols = 5;
-  const rows = 2;
-  const cw = w/cols;
-  const ch = h/rows;
+  // 君の図専用パラメータ
+  const rows = 5;
+  const leftX = w * 0.28;
+  const rightX = w * 0.68;
+  const colW = w * 0.12;
+  const cellH = h / rows;
 
   const cells = document.querySelectorAll(".cell");
 
   for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
+    checkCell(leftX, r, r);
+    checkCell(rightX, r, r+5);
+  }
 
-      const data = ctx.getImageData(
-        c*cw + cw*0.3,
-        r*ch + ch*0.3,
-        cw*0.4,
-        ch*0.4
-      ).data;
+  function checkCell(cx, r, idx){
+    const data = ctx.getImageData(
+      cx,
+      r*cellH + cellH*0.25,
+      colW,
+      cellH*0.5
+    ).data;
 
-      let sum=0;
-      for(let i=0;i<data.length;i+=4){
-        sum += data[i]+data[i+1]+data[i+2];
-      }
-
-      const avg = sum/(data.length/4)/3;
-
-      const idx = r*cols+c;
-
-      if(avg < 200){
-        cells[idx].classList.add("full");
-        cells[idx].textContent="満";
-      }else{
-        cells[idx].classList.remove("full");
-        cells[idx].textContent="空";
-      }
+    let sum=0;
+    for(let i=0;i<data.length;i+=4){
+      sum += data[i] + data[i+1] + data[i+2];
     }
+
+    const avg = sum/(data.length/4)/3;
+
+    if(avg < 220){
+      cells[idx].classList.add("full");
+      cells[idx].textContent = "満";
+    }else{
+      cells[idx].classList.remove("full");
+      cells[idx].textContent = "空";
+    }
+
+    console.log("cell", idx, "brightness", avg);
   }
 }
 </script>
