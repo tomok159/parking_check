@@ -125,7 +125,7 @@ function analyze(img){
 
     for(let i=0;i<data.length;i+=4){
       const v = (data[i]+data[i+1]+data[i+2])/3;
-      if(v < 200) dark++;
+      if(v < 220) dark++;
     }
 
     const ratio = dark / (data.length/4);
